@@ -78,7 +78,7 @@ all_issues=$(echo "$issue_refs $recent_issues" | tr ' ' '\n' | sort -u | grep -v
 # Output context for Claude (this gets added to the conversation)
 if [ -n "$all_issues" ]; then
   echo "[linear-sync] Changed: $filename | Issues: $all_issues"
-  echo "[linear-sync] Consider running: npx ts-node ~/.claude/skills/linear/scripts/sync.ts --issues ${all_issues// /,} --state Done"
+  echo "[linear-sync] Consider running: npx ts-node scripts/sync.ts --issues ${all_issues// /,} --state Done"
 fi
 
 exit 0

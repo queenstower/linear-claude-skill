@@ -29,7 +29,7 @@ cd ~/.claude/skills/linear && npm install
 ### 2. Run Setup Check
 
 ```bash
-npx tsx ~/.claude/skills/linear/scripts/setup.ts
+npx tsx scripts/setup.ts
 ```
 
 This checks your configuration and tells you exactly what's missing.
@@ -50,7 +50,7 @@ source ~/.zshrc
 ### 4. Verify It Works
 
 ```bash
-npx tsx ~/.claude/skills/linear/scripts/linear-ops.ts whoami
+npx tsx scripts/linear-ops.ts whoami
 ```
 
 You should see your name and organization.

@@ -256,7 +256,7 @@ mutation {
 **Example using query.ts:**
 
 ```bash
-npx tsx ~/.claude/skills/linear/scripts/query.ts 'mutation {
+npx tsx scripts/query.ts 'mutation {
   initiativeToProjectCreate(input: {
     initiativeId: "<initiative-uuid>",
     projectId: "<project-uuid>"
