@@ -1,3 +1,10 @@
+## [2.2.1](https://github.com/wrsmith108/linear-claude-skill/compare/v2.2.0...v2.2.1) (2026-02-10)
+
+
+### Bug Fixes
+
+* replace hardcoded ~/.claude/skills/linear paths with relative paths ([19819d3](https://github.com/wrsmith108/linear-claude-skill/commit/19819d35083737fcbdb26c432c9f11ecce8e9cba)), closes [#8](https://github.com/wrsmith108/linear-claude-skill/issues/8)
+
 # [2.2.0](https://github.com/wrsmith108/linear-claude-skill/compare/v2.1.1...v2.2.0) (2026-01-24)
 
 
