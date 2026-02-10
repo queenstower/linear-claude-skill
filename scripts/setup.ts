@@ -103,7 +103,7 @@ async function checkSdkInstalled(): Promise<{ installed: boolean; issues: string
       issues: ['@linear/sdk not installed'],
       suggestions: [
         'Install the Linear SDK:',
-        '  cd ~/.claude/skills/linear && npm install @linear/sdk'
+        '  npm install @linear/sdk  # Run from the skill directory'
       ]
     };
   }

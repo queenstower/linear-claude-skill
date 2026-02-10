@@ -58,30 +58,30 @@ A complete API wrapper with proper JSON escaping and error handling:
 
 ```bash
 # Create issue (replace <TEAM> with your team key, e.g., ENG, PROJ)
-node ~/.claude/skills/linear/scripts/linear-api.mjs create-issue \
+node scripts/linear-api.mjs create-issue \
   --team <TEAM> --title "New feature" --description "Details here" --priority 2
 
 # Update status (replace <TEAM>-123 with your issue identifier)
-node ~/.claude/skills/linear/scripts/linear-api.mjs update-status \
+node scripts/linear-api.mjs update-status \
   --issue <TEAM>-123 --status done
 
 # Add comment
-node ~/.claude/skills/linear/scripts/linear-api.mjs add-comment \
+node scripts/linear-api.mjs add-comment \
   --issue <TEAM>-123 --body "Fixed in PR #25"
 
 # Add project update
-node ~/.claude/skills/linear/scripts/linear-api.mjs add-project-update \
+node scripts/linear-api.mjs add-project-update \
   --project <PROJECT_UUID> --body "## Status Update\n\nProgress details..." --health onTrack
 
 # List issues
-node ~/.claude/skills/linear/scripts/linear-api.mjs list-issues \
+node scripts/linear-api.mjs list-issues \
   --team <TEAM> --status "In Progress" --limit 20
 
 # List labels
-node ~/.claude/skills/linear/scripts/linear-api.mjs list-labels --team <TEAM>
+node scripts/linear-api.mjs list-labels --team <TEAM>
 
 # Help
-node ~/.claude/skills/linear/scripts/linear-api.mjs help
+node scripts/linear-api.mjs help
 ```
 
 **Benefits over MCP:**
@@ -159,7 +159,7 @@ export LINEAR_API_KEY="lin_api_your_key_here"
 ### Test Connection
 
 ```bash
-npx tsx ~/.claude/skills/linear/scripts/query.ts "query { viewer { name } }"
+npx tsx scripts/query.ts "query { viewer { name } }"
 ```
 
 ### Check MCP Configuration
