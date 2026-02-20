@@ -44,46 +44,6 @@ linear issues list
 
 ---
 
-## Multi-Workspace Setup
-
-User has **3 Linear workspaces** with separate API keys:
-
-| Workspace | Env Var | Team Keys |
-|-----------|---------|-----------|
-| **trendle** | `LINEAR_API_KEY` (default) | MR (Marketing), TRE (Product) |
-| **mobicraftapp** | `LINEAR_API_KEY_MOBICRAFT` | MOB (Mobicraftapp) |
-| **aifc** | `LINEAR_API_KEY_AIFC` | AIF (AI Flashcards) |
-
-**Workspace detection from URLs:**
-- `linear.app/mobicraftapp/...` or `MOB-*` issues → use `LINEAR_API_KEY_MOBICRAFT`
-- `linear.app/aifc/...` or `AIF-*` issues → use `LINEAR_API_KEY_AIFC`
-- `linear.app/trendle/...` or `MR-*`/`TRE-*` issues → use default `LINEAR_API_KEY`
-
-**API keys are stored in `~/.claude/.env`** — always source it first:
-```bash
-source ~/.claude/.env
-```
-
-**To query the non-default workspace**, override the env var after sourcing:
-```bash
-# Source keys first
-source ~/.claude/.env
-
-# aifc workspace (AIF-* issues)
-source ~/.claude/.env && LINEAR_API_KEY=$LINEAR_API_KEY_AIFC bun run ~/.claude/skills/linear/scripts/query.ts 'query { issue(id: "AIF-7") { title description state { name } } }'
-
-# mobicraftapp workspace (MOB-* issues)
-source ~/.claude/.env && LINEAR_API_KEY=$LINEAR_API_KEY_MOBICRAFT bun run ~/.claude/skills/linear/scripts/query.ts '...'
-```
-
-**Note**: `linear-ops.ts view` does NOT exist — use `query.ts` with GraphQL for fetching issues:
-```bash
-# Fetch issue details (replace AIF-7 with actual issue ID)
-source ~/.claude/.env && LINEAR_API_KEY=$LINEAR_API_KEY_AIFC bun run ~/.claude/skills/linear/scripts/query.ts 'query { issue(id: "AIF-7") { title description state { name } comments { nodes { body } } } }'
-```
-
----
-
 ## 🔐 Security: Varlock Integration
 
 **CRITICAL**: Never expose API keys in terminal output or Claude's context.
@@ -95,7 +55,7 @@ source ~/.claude/.env && LINEAR_API_KEY=$LINEAR_API_KEY_AIFC bun run ~/.claude/s
 varlock load 2>&1 | grep LINEAR
 
 # Run commands with secrets injected
-varlock run -- bun run scripts/query.ts "query { viewer { name } }"
+varlock run -- npx tsx scripts/query.ts "query { viewer { name } }"
 
 # Check schema (safe - no values)
 cat .env.schema | grep LINEAR
@@ -143,7 +103,7 @@ cat .env
 Run the setup check to verify your configuration:
 
 ```bash
-bun run ~/.claude/skills/linear/scripts/setup.ts
+npx tsx scripts/setup.ts
 ```
 
 This will check:
@@ -176,7 +136,7 @@ echo 'LINEAR_API_KEY=lin_api_your_key_here' >> ~/.claude/.env
 Verify everything works:
 
 ```bash
-bun run ~/.claude/skills/linear/scripts/query.ts "query { viewer { name } }"
+npx tsx scripts/query.ts "query { viewer { name } }"
 ```
 
 You should see your name from Linear.
@@ -185,19 +145,19 @@ You should see your name from Linear.
 
 ```bash
 # Create issue in a project
-bun run scripts/linear-ops.ts create-issue "Project" "Title" "Description"
+npx tsx scripts/linear-ops.ts create-issue "Project" "Title" "Description"
 
 # Update issue status
-bun run scripts/linear-ops.ts status Done ENG-123 ENG-124
+npx tsx scripts/linear-ops.ts status Done ENG-123 ENG-124
 
 # Create sub-issue
-bun run scripts/linear-ops.ts create-sub-issue ENG-100 "Sub-task" "Details"
+npx tsx scripts/linear-ops.ts create-sub-issue ENG-100 "Sub-task" "Details"
 
 # Update project status
-bun run scripts/linear-ops.ts project-status "Phase 1" completed
+npx tsx scripts/linear-ops.ts project-status "Phase 1" completed
 
 # Show all commands
-bun run scripts/linear-ops.ts help
+npx tsx scripts/linear-ops.ts help
 ```
 
 See [Project Management Commands](#project-management-commands) for full reference.
@@ -214,24 +174,24 @@ See [Project Management Commands](#project-management-commands) for full referen
 
 1. **Create the project first**:
    ```bash
-   bun run scripts/linear-ops.ts create-project "Phase X: Feature Name" "My Initiative"
+   npx tsx scripts/linear-ops.ts create-project "Phase X: Feature Name" "My Initiative"
    ```
 
 2. **Set project state to Planned**:
    ```bash
-   bun run scripts/linear-ops.ts project-status "Phase X: Feature Name" planned
+   npx tsx scripts/linear-ops.ts project-status "Phase X: Feature Name" planned
    ```
 
 3. **Create issues directly in the project**:
    ```bash
-   bun run scripts/linear-ops.ts create-issue "Phase X: Feature Name" "Parent task" "Description"
-   bun run scripts/linear-ops.ts create-sub-issue ENG-XXX "Sub-task 1" "Description"
-   bun run scripts/linear-ops.ts create-sub-issue ENG-XXX "Sub-task 2" "Description"
+   npx tsx scripts/linear-ops.ts create-issue "Phase X: Feature Name" "Parent task" "Description"
+   npx tsx scripts/linear-ops.ts create-sub-issue ENG-XXX "Sub-task 1" "Description"
+   npx tsx scripts/linear-ops.ts create-sub-issue ENG-XXX "Sub-task 2" "Description"
    ```
 
 4. **Update project state when work begins**:
    ```bash
-   bun run scripts/linear-ops.ts project-status "Phase X: Feature Name" in-progress
+   npx tsx scripts/linear-ops.ts project-status "Phase X: Feature Name" in-progress
    ```
 
 #### Why This Matters
@@ -259,7 +219,7 @@ create-issue "Phase 6A" "New feature"  # Wrong project
 Update a project's state in Linear. Accepts user-friendly terminology that maps to Linear's API.
 
 ```bash
-bun run scripts/linear-ops.ts project-status <project-name> <state>
+npx tsx scripts/linear-ops.ts project-status <project-name> <state>
 ```
 
 **Valid States:**
@@ -275,13 +235,13 @@ bun run scripts/linear-ops.ts project-status <project-name> <state>
 **Examples:**
 ```bash
 # Start working on a project
-bun run scripts/linear-ops.ts project-status "Phase 8: MCP Decision Engine" in-progress
+npx tsx scripts/linear-ops.ts project-status "Phase 8: MCP Decision Engine" in-progress
 
 # Mark project complete
-bun run scripts/linear-ops.ts project-status "Phase 8" completed
+npx tsx scripts/linear-ops.ts project-status "Phase 8" completed
 
 # Partial name matching works
-bun run scripts/linear-ops.ts project-status "Phase 8" paused
+npx tsx scripts/linear-ops.ts project-status "Phase 8" paused
 ```
 
 ### link-initiative
@@ -289,16 +249,16 @@ bun run scripts/linear-ops.ts project-status "Phase 8" paused
 Link an existing project to an initiative.
 
 ```bash
-bun run scripts/linear-ops.ts link-initiative <project-name> <initiative-name>
+npx tsx scripts/linear-ops.ts link-initiative <project-name> <initiative-name>
 ```
 
 **Examples:**
 ```bash
 # Link a project to an initiative
-bun run scripts/linear-ops.ts link-initiative "Phase 8: MCP Decision Engine" "Q1 Goals"
+npx tsx scripts/linear-ops.ts link-initiative "Phase 8: MCP Decision Engine" "Q1 Goals"
 
 # Partial matching works
-bun run scripts/linear-ops.ts link-initiative "Phase 8" "Q1 Goals"
+npx tsx scripts/linear-ops.ts link-initiative "Phase 8" "Q1 Goals"
 ```
 
 ### unlink-initiative
@@ -306,16 +266,16 @@ bun run scripts/linear-ops.ts link-initiative "Phase 8" "Q1 Goals"
 Remove a project from an initiative.
 
 ```bash
-bun run scripts/linear-ops.ts unlink-initiative <project-name> <initiative-name>
+npx tsx scripts/linear-ops.ts unlink-initiative <project-name> <initiative-name>
 ```
 
 **Examples:**
 ```bash
 # Remove incorrect link
-bun run scripts/linear-ops.ts unlink-initiative "Phase 8" "Linear Skill"
+npx tsx scripts/linear-ops.ts unlink-initiative "Phase 8" "Linear Skill"
 
 # Clean up test links
-bun run scripts/linear-ops.ts unlink-initiative "Test Project" "Q1 Goals"
+npx tsx scripts/linear-ops.ts unlink-initiative "Test Project" "Q1 Goals"
 ```
 
 **Error Handling:**
@@ -326,26 +286,26 @@ bun run scripts/linear-ops.ts unlink-initiative "Test Project" "Q1 Goals"
 
 ```bash
 # 1. Create project linked to initiative
-bun run scripts/linear-ops.ts create-project "Phase 11: New Feature" "Q1 Goals"
+npx tsx scripts/linear-ops.ts create-project "Phase 11: New Feature" "Q1 Goals"
 
 # 2. Set state to planned
-bun run scripts/linear-ops.ts project-status "Phase 11" planned
+npx tsx scripts/linear-ops.ts project-status "Phase 11" planned
 
 # 3. Create issues in the project
-bun run scripts/linear-ops.ts create-issue "Phase 11" "Parent task" "Description"
-bun run scripts/linear-ops.ts create-sub-issue ENG-XXX "Sub-task 1" "Details"
+npx tsx scripts/linear-ops.ts create-issue "Phase 11" "Parent task" "Description"
+npx tsx scripts/linear-ops.ts create-sub-issue ENG-XXX "Sub-task 1" "Details"
 
 # 4. Start work - update to in-progress
-bun run scripts/linear-ops.ts project-status "Phase 11" in-progress
+npx tsx scripts/linear-ops.ts project-status "Phase 11" in-progress
 
 # 5. Mark issues done
-bun run scripts/linear-ops.ts status Done ENG-XXX ENG-YYY
+npx tsx scripts/linear-ops.ts status Done ENG-XXX ENG-YYY
 
 # 6. Complete project
-bun run scripts/linear-ops.ts project-status "Phase 11" completed
+npx tsx scripts/linear-ops.ts project-status "Phase 11" completed
 
 # 7. (Optional) Link to additional initiative
-bun run scripts/linear-ops.ts link-initiative "Phase 11" "Q2 Goals"
+npx tsx scripts/linear-ops.ts link-initiative "Phase 11" "Q2 Goals"
 ```
 
 ---
@@ -441,7 +401,7 @@ import { readFileSync, writeFileSync } from 'fs';
 // Find current session: ls -t ~/.claude/projects/<project-path>/*.jsonl | head -1
 const SESSION_JSONL = process.argv[2];
 if (!SESSION_JSONL) {
-  console.error('Usage: bun run /tmp/extract-image.ts <path-to-session.jsonl>');
+  console.error('Usage: npx tsx /tmp/extract-image.ts <path-to-session.jsonl>');
   process.exit(1);
 }
 
@@ -468,7 +428,7 @@ Find the current session JSONL path with:
 ls -t ~/.claude/projects/<project-path>/*.jsonl | head -1
 ```
 
-Run it: `bun run /tmp/extract-image.ts ~/.claude/projects/.../session.jsonl`
+Run it: `npx tsx /tmp/extract-image.ts ~/.claude/projects/.../session.jsonl`
 
 This saves images to `/tmp/shared-image-0.png`, `/tmp/shared-image-1.png`, etc.
 
@@ -480,18 +440,18 @@ This saves images to `/tmp/shared-image-0.png`, `/tmp/shared-image-1.png`, etc.
 
 ```bash
 # First get the project's team
-bun run scripts/query.ts 'query { projects(filter: { name: { containsIgnoreCase: "PROJECT NAME" } }) { nodes { id name teams { nodes { id name key } } } } }'
+npx tsx scripts/query.ts 'query { projects(filter: { name: { containsIgnoreCase: "PROJECT NAME" } }) { nodes { id name teams { nodes { id name key } } } } }'
 
 # Then create the issue with the correct teamId
-bun run scripts/query.ts 'mutation { issueCreate(input: { teamId: "TEAM_UUID", projectId: "PROJECT_UUID", title: "Issue title", description: "Description" }) { success issue { id identifier url } } }'
+npx tsx scripts/query.ts 'mutation { issueCreate(input: { teamId: "TEAM_UUID", projectId: "PROJECT_UUID", title: "Issue title", description: "Description" }) { success issue { id identifier url } } }'
 ```
 
 ### Step 3: Upload the image and attach to the issue
 
-Run **from the skill directory** to use the correct SDK version:
+Run from the skill directory to ensure the correct SDK version is used:
 
 ```bash
-cd ~/.claude/skills/linear && bun run scripts/upload-image.ts /tmp/shared-image-0.png TRE-123 "Optional comment text"
+npx tsx scripts/upload-image.ts /tmp/shared-image-0.png ENG-123 "Optional comment text"
 ```
 
 The script will:
@@ -507,7 +467,7 @@ The script will:
 | `create-issue` fails with "project not in same team" | Script picks wrong team | Use GraphQL directly with explicit teamId |
 | `upload-image.ts` "Issue not found" | Issue was deleted before attaching | Ensure issue exists first |
 | Image not found on disk | Shared inline, not as file | Extract from session JSONL (Step 1) |
-| Wrong SDK version when running from `/tmp` | Bun resolves different cached SDK | Always `cd ~/.claude/skills/linear` first |
+| Wrong SDK version | Run from the skill directory | cd to skill dir before running |
 
 ---
 
@@ -528,16 +488,6 @@ See **[projects.md](projects.md)** for complete project creation checklist.
 
 ## Conventions
 
-### Issue References
-
-When mentioning any issue identifier (e.g. `TRE-666`, `MOB-42`), always render it as a hyperlink:
-
-- **trendle workspace**: `[TRE-123](https://linear.app/trendle/issue/TRE-123)`
-- **mobicraftapp workspace**: `[MOB-123](https://linear.app/mobicraftapp/issue/MOB-123)`
-- **aifc workspace**: `[AIF-123](https://linear.app/aifc/issue/AIF-123)`
-
-Example: instead of writing `TRE-666`, write `[TRE-666](https://linear.app/trendle/issue/TRE-666)`.
-
 ### Issue Status
 
 - **Assigned to me**: Set `state: "Todo"`
@@ -554,10 +504,10 @@ Uses **domain-based label taxonomy**. See [docs/labels.md](docs/labels.md).
 
 ```bash
 # Validate labels
-bun run scripts/linear-ops.ts labels validate "feature,security"
+npx tsx scripts/linear-ops.ts labels validate "feature,security"
 
 # Suggest labels for issue
-bun run scripts/linear-ops.ts labels suggest "Fix XSS vulnerability"
+npx tsx scripts/linear-ops.ts labels suggest "Fix XSS vulnerability"
 ```
 
 ## SDK Automation Scripts
@@ -584,7 +534,7 @@ See **[api.md](api.md)** for complete documentation including:
 **Quick ad-hoc query:**
 
 ```bash
-bun run ~/.claude/skills/linear/scripts/query.ts "query { viewer { name } }"
+npx tsx scripts/query.ts "query { viewer { name } }"
 ```
 
 ## Projects & Initiatives
@@ -595,15 +545,15 @@ For advanced project and initiative management patterns, see **[projects.md](pro
 
 ```bash
 # Create project linked to initiative
-bun run scripts/linear-ops.ts create-project "Phase X: Name" "My Initiative"
+npx tsx scripts/linear-ops.ts create-project "Phase X: Name" "My Initiative"
 
 # Update project status
-bun run scripts/linear-ops.ts project-status "Phase X" in-progress
-bun run scripts/linear-ops.ts project-status "Phase X" completed
+npx tsx scripts/linear-ops.ts project-status "Phase X" in-progress
+npx tsx scripts/linear-ops.ts project-status "Phase X" completed
 
 # Link/unlink projects to initiatives
-bun run scripts/linear-ops.ts link-initiative "Phase X" "My Initiative"
-bun run scripts/linear-ops.ts unlink-initiative "Phase X" "Old Initiative"
+npx tsx scripts/linear-ops.ts link-initiative "Phase X" "My Initiative"
+npx tsx scripts/linear-ops.ts unlink-initiative "Phase X" "Old Initiative"
 ```
 
 **Key topics in projects.md:**
@@ -625,10 +575,10 @@ For bulk synchronization of code changes to Linear, see **[sync.md](sync.md)**.
 
 ```bash
 # Bulk update issues to Done
-bun run scripts/linear-ops.ts status Done ENG-101 ENG-102 ENG-103
+npx tsx scripts/linear-ops.ts status Done ENG-101 ENG-102 ENG-103
 
 # Update project status
-bun run scripts/linear-ops.ts project-status "My Project" completed
+npx tsx scripts/linear-ops.ts project-status "My Project" completed
 ```
 
 ---
