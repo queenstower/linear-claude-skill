@@ -16,6 +16,7 @@ A comprehensive [Claude Code](https://claude.ai/code) skill for managing Linear 
 - **Status Management** — Project status UUIDs for workflow automation
 - **MCP Reliability Workarounds** — Fallback patterns for timeout/failure scenarios
 - **Bulk Sync** — Synchronize code changes with Linear via CLI, agents, or hooks
+- **Image Uploads** — Upload images to Linear's S3 storage and attach to issues
 
 ## Quick Start (New Users)
 
@@ -123,6 +124,8 @@ linear-claude-skill/
 │   ├── query.ts      # GraphQL query runner
 │   ├── setup.ts      # Configuration checker
 │   ├── sync.ts       # Bulk sync CLI tool
+│   ├── upload-image.ts  # Upload images to Linear S3
+│   ├── extract-image.ts # Extract images from session JSONL
 │   ├── linear-api.mjs # Direct API wrapper
 │   └── lib/          # Shared utilities (taxonomy, labels, verification)
 └── hooks/
@@ -349,6 +352,12 @@ Auto-suggest sync after code edits. Add to `.claude/settings.json`:
 See `sync.md` for complete patterns including AgentDB integration.
 
 ## Changelog
+
+### 2.3.0 (2026-02-27)
+
+- Added `scripts/upload-image.ts` — upload images to Linear's S3 storage and attach as comments
+- Added `scripts/extract-image.ts` — extract inline base64 images from Claude Code session JSONL files
+- Added image upload workflow documentation in SKILL.md
 
 ### 2.2.3 (2026-02-10)
 
