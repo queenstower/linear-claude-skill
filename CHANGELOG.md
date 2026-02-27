@@ -1,3 +1,16 @@
+# [2.3.0](https://github.com/wrsmith108/linear-claude-skill/compare/v2.2.2...v2.3.0) (2026-02-27)
+
+
+### Bug Fixes
+
+* align image upload scripts with project conventions ([1f1b926](https://github.com/wrsmith108/linear-claude-skill/commit/1f1b92669c4a8921bcd2f7aaa845aa3a2329a702))
+
+
+### Features
+
+* add image upload support ([9f42c6c](https://github.com/wrsmith108/linear-claude-skill/commit/9f42c6c8fbb3351c5c1495e33a1c24d19eeac5f6))
+* add image upload support (clean SKILL.md) ([5c33114](https://github.com/wrsmith108/linear-claude-skill/commit/5c33114772b05789a46282acb7e223ee544662b3))
+
 ## [2.2.3] - 2026-02-10
 
 ### Changed
