@@ -1,3 +1,10 @@
+## [2.3.1](https://github.com/wrsmith108/linear-claude-skill/compare/v2.3.0...v2.3.1) (2026-02-27)
+
+
+### Bug Fixes
+
+* resolve 11 ESLint warnings across scripts/ ([6013f71](https://github.com/wrsmith108/linear-claude-skill/commit/6013f710340169148882a3d3dafa74e2e59afbe1))
+
 # [2.3.0](https://github.com/wrsmith108/linear-claude-skill/compare/v2.2.2...v2.3.0) (2026-02-27)
 
 
