@@ -9,13 +9,11 @@ import type {
   AgentSelection,
   AgentId,
   DomainLabel,
-  TaxonomyLabel,
-  LabelDefinition
+  TaxonomyLabel
 } from './taxonomy'
 
 import {
   LABEL_TAXONOMY,
-  getLabelByName,
   DOMAIN_LABEL_NAMES
 } from './taxonomy-data'
 

@@ -19,11 +19,9 @@ import type {
 export type { ValidationResult, LabelSuggestion }
 
 import {
-  LABEL_TAXONOMY,
   getLabelByName,
   DOMAIN_LABEL_NAMES,
-  TYPE_LABEL_NAMES,
-  SCOPE_LABEL_NAMES
+  TYPE_LABEL_NAMES
 } from './taxonomy-data'
 
 /**

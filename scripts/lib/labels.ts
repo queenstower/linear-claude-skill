@@ -7,7 +7,7 @@
  */
 import { LinearClient } from '@linear/sdk'
 import { fileURLToPath } from 'url'
-import { getLabelColor, buildColorMap, isValidLabel } from './taxonomy-data'
+import { buildColorMap } from './taxonomy-data'
 import { validateLabels, type ValidationResult } from './taxonomy-validation'
 
 const client = new LinearClient({ apiKey: process.env.LINEAR_API_KEY })

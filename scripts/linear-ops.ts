@@ -271,6 +271,7 @@ const commands: Record<string, (...args: string[]) => Promise<void>> = {
     console.log(`  Current state: ${project.state}`);
 
     // Update project state using the SDK's updateProject method
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await (client as any).updateProject(project.id, {
       state: apiState
     });
@@ -315,6 +316,7 @@ const commands: Record<string, (...args: string[]) => Promise<void>> = {
     console.log(`  Found initiative: ${initiative.name}`);
 
     // Link project to initiative using createInitiativeToProject
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await (client as any).createInitiativeToProject({
       projectId: project.id,
       initiativeId: initiative.id
@@ -363,6 +365,7 @@ const commands: Record<string, (...args: string[]) => Promise<void>> = {
     // Find the initiative-to-project link by querying initiativeToProjects
     // Note: Linear SDK filter doesn't support nested entity filters well,
     // so we fetch all links for the initiative and filter client-side
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const allLinks = await (client as any).initiativeToProjects({
       filter: {
         initiativeId: { eq: initiative.id }
@@ -371,6 +374,7 @@ const commands: Record<string, (...args: string[]) => Promise<void>> = {
 
     // Find the specific link for our project
     const matchingLinks = (allLinks.nodes || []).filter(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (l: any) => l.projectId === project.id
     );
 
@@ -382,6 +386,7 @@ const commands: Record<string, (...args: string[]) => Promise<void>> = {
     const link = matchingLinks[0];
 
     // Delete the initiative-to-project link
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await (client as any).deleteInitiativeToProject(link.id);
 
     console.log(`\n[SUCCESS] Project unlinked from initiative!`);
