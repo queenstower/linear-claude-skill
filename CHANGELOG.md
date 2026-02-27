@@ -1,15 +1,17 @@
 # [2.3.0](https://github.com/wrsmith108/linear-claude-skill/compare/v2.2.2...v2.3.0) (2026-02-27)
 
 
+### Features
+
+* add `scripts/upload-image.ts` — upload images to Linear's S3 storage and optionally attach as a comment on an issue ([9f42c6c](https://github.com/wrsmith108/linear-claude-skill/commit/9f42c6c8fbb3351c5c1495e33a1c24d19eeac5f6))
+* add `scripts/extract-image.ts` — extract inline base64 images from Claude Code session JSONL files
+* add image upload workflow documentation in SKILL.md
+* add `upload-image` and `extract-image` npm script entries in package.json
+
+
 ### Bug Fixes
 
 * align image upload scripts with project conventions ([1f1b926](https://github.com/wrsmith108/linear-claude-skill/commit/1f1b92669c4a8921bcd2f7aaa845aa3a2329a702))
-
-
-### Features
-
-* add image upload support ([9f42c6c](https://github.com/wrsmith108/linear-claude-skill/commit/9f42c6c8fbb3351c5c1495e33a1c24d19eeac5f6))
-* add image upload support (clean SKILL.md) ([5c33114](https://github.com/wrsmith108/linear-claude-skill/commit/5c33114772b05789a46282acb7e223ee544662b3))
 
 ## [2.2.3] - 2026-02-10
 
