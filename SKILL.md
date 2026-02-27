@@ -392,63 +392,41 @@ See **[sync.md](sync.md)** for parallel execution patterns.
 
 ### Step 1: Extract the image from conversation context
 
-Images shared inline in Claude Code are **not** saved to disk automatically — they live as base64 in the session JSONL. Always extract first using this script:
+Images shared inline in Claude Code are **not** saved to disk automatically — they live as base64 in the session JSONL. Use the extraction script:
 
-```typescript
-// /tmp/extract-image.ts
-import { readFileSync, writeFileSync } from 'fs';
-
-// Find current session: ls -t ~/.claude/projects/<project-path>/*.jsonl | head -1
-const SESSION_JSONL = process.argv[2];
-if (!SESSION_JSONL) {
-  console.error('Usage: npx tsx /tmp/extract-image.ts <path-to-session.jsonl>');
-  process.exit(1);
-}
-
-const lines = readFileSync(SESSION_JSONL, 'utf8').trim().split('\n');
-let count = 0;
-for (const line of lines) {
-  const obj = JSON.parse(line);
-  const msg = obj.message;
-  if (!msg) continue;
-  for (const c of (msg.content || [])) {
-    if (c.type === 'image' && c.source?.type === 'base64') {
-      const ext = (c.source.media_type || 'image/png').split('/')[1];
-      const path = `/tmp/shared-image-${count}.${ext}`;
-      writeFileSync(path, Buffer.from(c.source.data, 'base64'));
-      console.log(`Saved ${path}`);
-      count++;
-    }
-  }
-}
-```
-
-Find the current session JSONL path with:
 ```bash
+# Find the current session JSONL
 ls -t ~/.claude/projects/<project-path>/*.jsonl | head -1
-```
 
-Run it: `npx tsx /tmp/extract-image.ts ~/.claude/projects/.../session.jsonl`
+# Extract all inline images (saves to /tmp by default)
+npx tsx scripts/extract-image.ts <path-to-session.jsonl>
+
+# Or specify a custom output directory
+npx tsx scripts/extract-image.ts <path-to-session.jsonl> ~/Desktop
+```
 
 This saves images to `/tmp/shared-image-0.png`, `/tmp/shared-image-1.png`, etc.
 
 > **Always verify** the extracted image with the Read tool before uploading.
 
-### Step 2: Create the issue using GraphQL directly
-
-**Do NOT use `linear-ops.ts create-issue`** if you need to target a specific team — it picks the first team alphabetically which may not match your project. Use GraphQL with explicit teamId and projectId:
+### Step 2: Create the issue
 
 ```bash
-# First get the project's team
-npx tsx scripts/query.ts 'query { projects(filter: { name: { containsIgnoreCase: "PROJECT NAME" } }) { nodes { id name teams { nodes { id name key } } } } }'
-
-# Then create the issue with the correct teamId
-npx tsx scripts/query.ts 'mutation { issueCreate(input: { teamId: "TEAM_UUID", projectId: "PROJECT_UUID", title: "Issue title", description: "Description" }) { success issue { id identifier url } } }'
+# Standard approach
+npx tsx scripts/linear-ops.ts create-issue "Project Name" "Issue title" "Description"
 ```
 
-### Step 3: Upload the image and attach to the issue
+> **Note**: If you need to target a specific team and `create-issue` picks the wrong one, use GraphQL with explicit `teamId`:
+>
+> ```bash
+> # Get the project's team
+> npx tsx scripts/query.ts 'query { projects(filter: { name: { containsIgnoreCase: "PROJECT NAME" } }) { nodes { id name teams { nodes { id name key } } } } }'
+>
+> # Create with explicit teamId
+> npx tsx scripts/query.ts 'mutation { issueCreate(input: { teamId: "TEAM_UUID", projectId: "PROJECT_UUID", title: "Issue title", description: "Description" }) { success issue { id identifier url } } }'
+> ```
 
-Run from the skill directory to ensure the correct SDK version is used:
+### Step 3: Upload the image and attach to the issue
 
 ```bash
 npx tsx scripts/upload-image.ts /tmp/shared-image-0.png ENG-123 "Optional comment text"
@@ -464,10 +442,9 @@ The script will:
 
 | Problem | Cause | Fix |
 |---------|-------|-----|
-| `create-issue` fails with "project not in same team" | Script picks wrong team | Use GraphQL directly with explicit teamId |
+| `create-issue` picks wrong team | Multiple teams in workspace | Use GraphQL with explicit teamId (see Step 2) |
 | `upload-image.ts` "Issue not found" | Issue was deleted before attaching | Ensure issue exists first |
 | Image not found on disk | Shared inline, not as file | Extract from session JSONL (Step 1) |
-| Wrong SDK version | Run from the skill directory | cd to skill dir before running |
 
 ---
 

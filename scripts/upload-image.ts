@@ -1,43 +1,26 @@
-#!/usr/bin/env bun
+#!/usr/bin/env npx tsx
 /**
  * Upload image to Linear and optionally attach to an issue
  *
  * Usage:
- *   bun run upload-image.ts <image-path> [issue-id]
+ *   npx tsx scripts/upload-image.ts <image-path> [issue-id] [comment-text]
  *
  * Examples:
- *   bun run upload-image.ts ~/Desktop/screenshot.png
- *   bun run upload-image.ts /tmp/diagram.jpg TRE-123
- *   bun run upload-image.ts /tmp/mockup.png TRE-123 "Here's the mockup"
+ *   npx tsx scripts/upload-image.ts ~/Desktop/screenshot.png
+ *   npx tsx scripts/upload-image.ts /tmp/diagram.jpg TRE-123
+ *   npx tsx scripts/upload-image.ts /tmp/mockup.png TRE-123 "Here's the mockup"
  *
  * Output:
  *   - Prints the asset URL (for embedding in descriptions/comments)
  *   - If issue-id provided, adds the image as a comment on that issue
  */
 
-import { LinearClient } from '@linear/sdk';
 import { readFileSync, statSync } from 'fs';
 import { basename, extname } from 'path';
-
-const API_KEY = process.env.LINEAR_API_KEY;
-if (!API_KEY) {
-  console.error('[ERROR] LINEAR_API_KEY environment variable is required');
-  process.exit(1);
-}
-
-const args = process.argv.slice(2);
-if (args.length === 0) {
-  console.error('Usage: bun run upload-image.ts <image-path> [issue-id] [comment-text]');
-  console.error('Example: bun run upload-image.ts ~/Desktop/screenshot.png TRE-123');
-  process.exit(1);
-}
-
-const imagePath = args[0].replace(/^~/, process.env.HOME || '');
-const issueIdentifier = args[1];
-const commentText = args[2] || '';
+import { EXIT_CODES } from './lib/exit-codes.js';
+import { getLinearClient } from './lib/linear-utils.js';
 
 // Detect content type
-const ext = extname(imagePath).toLowerCase();
 const contentTypeMap: Record<string, string> = {
   '.png': 'image/png',
   '.jpg': 'image/jpeg',
@@ -47,9 +30,22 @@ const contentTypeMap: Record<string, string> = {
   '.svg': 'image/svg+xml',
   '.pdf': 'application/pdf',
 };
-const contentType = contentTypeMap[ext] || 'application/octet-stream';
 
 async function main() {
+  const args = process.argv.slice(2);
+  if (args.length === 0) {
+    console.error('Usage: npx tsx scripts/upload-image.ts <image-path> [issue-id] [comment-text]');
+    console.error('Example: npx tsx scripts/upload-image.ts ~/Desktop/screenshot.png TRE-123');
+    process.exit(EXIT_CODES.INVALID_ARGUMENTS);
+  }
+
+  const imagePath = args[0].replace(/^~/, process.env.HOME || '');
+  const issueIdentifier = args[1];
+  const commentText = args[2] || '';
+
+  const ext = extname(imagePath).toLowerCase();
+  const contentType = contentTypeMap[ext] || 'application/octet-stream';
+
   // Read file
   let fileData: Buffer;
   let fileSize: number;
@@ -58,14 +54,20 @@ async function main() {
     fileSize = statSync(imagePath).size;
   } catch (err) {
     console.error(`[ERROR] Cannot read file: ${imagePath}`);
-    console.error(String(err));
-    process.exit(1);
+    console.error(err instanceof Error ? err.message : String(err));
+    process.exit(EXIT_CODES.INVALID_ARGUMENTS);
   }
 
   const filename = basename(imagePath);
   console.log(`Uploading: ${filename} (${(fileSize / 1024).toFixed(1)} KB, ${contentType})`);
 
-  const client = new LinearClient({ apiKey: API_KEY });
+  let client;
+  try {
+    client = getLinearClient();
+  } catch (err) {
+    console.error(err instanceof Error ? err.message : String(err));
+    process.exit(EXIT_CODES.MISSING_API_KEY);
+  }
 
   // Step 1: Request upload URL from Linear
   const uploadResult = await client.fileUpload(contentType, filename, fileSize);
@@ -73,7 +75,7 @@ async function main() {
 
   if (!uploadFile) {
     console.error('[ERROR] Failed to get upload URL from Linear');
-    process.exit(1);
+    process.exit(EXIT_CODES.API_ERROR);
   }
 
   const { uploadUrl, assetUrl, headers } = uploadFile;
@@ -90,12 +92,12 @@ async function main() {
   const uploadResponse = await fetch(uploadUrl, {
     method: 'PUT',
     headers: uploadHeaders,
-    body: fileData,
+    body: new Uint8Array(fileData),
   });
 
   if (!uploadResponse.ok) {
     console.error(`[ERROR] Upload failed: ${uploadResponse.status} ${uploadResponse.statusText}`);
-    process.exit(1);
+    process.exit(EXIT_CODES.API_ERROR);
   }
 
   console.log('\n[SUCCESS] Image uploaded!');
@@ -119,7 +121,7 @@ async function main() {
 
     if (issues.nodes.length === 0) {
       console.error(`[ERROR] Issue ${issueIdentifier} not found`);
-      process.exit(1);
+      process.exit(EXIT_CODES.RESOURCE_NOT_FOUND);
     }
 
     const issue = issues.nodes[0];
@@ -138,6 +140,6 @@ async function main() {
 }
 
 main().catch(err => {
-  console.error('[ERROR]', err.message || err);
-  process.exit(1);
+  console.error('[ERROR]', err instanceof Error ? err.message : String(err));
+  process.exit(EXIT_CODES.API_ERROR);
 });
