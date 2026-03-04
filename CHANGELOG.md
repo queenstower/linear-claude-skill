@@ -1,3 +1,10 @@
+## [2.3.2](https://github.com/wrsmith108/linear-claude-skill/compare/v2.3.1...v2.3.2) (2026-03-04)
+
+
+### Bug Fixes
+
+* add version 2.3.1 to SKILL.md frontmatter ([d15237e](https://github.com/wrsmith108/linear-claude-skill/commit/d15237e8b703ad9562a2107327d35587e6920fb9))
+
 ## [2.3.1](https://github.com/wrsmith108/linear-claude-skill/compare/v2.3.0...v2.3.1) (2026-02-27)
 
 
