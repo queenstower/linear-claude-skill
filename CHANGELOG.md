@@ -1,3 +1,10 @@
+# [2.4.0](https://github.com/wrsmith108/linear-claude-skill/compare/v2.3.2...v2.4.0) (2026-03-04)
+
+
+### Features
+
+* add Claude plugin marketplace metadata ([91e5414](https://github.com/wrsmith108/linear-claude-skill/commit/91e5414345168a6c33d054f3f89ec261432d97c5))
+
 ## [2.3.2](https://github.com/wrsmith108/linear-claude-skill/compare/v2.3.1...v2.3.2) (2026-03-04)
 
 
