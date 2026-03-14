@@ -5,12 +5,12 @@
  * Handles case-sensitivity issues and provides verification.
  * Integrates with the domain-based label taxonomy.
  */
-import { LinearClient } from '@linear/sdk'
 import { fileURLToPath } from 'url'
 import { buildColorMap } from './taxonomy-data'
 import { validateLabels, type ValidationResult } from './taxonomy-validation'
+import { getLinearClient } from './linear-utils.js'
 
-const client = new LinearClient({ apiKey: process.env.LINEAR_API_KEY })
+const client = getLinearClient()
 
 // Use taxonomy colors as primary source, with fallbacks for legacy labels
 const TAXONOMY_COLORS = buildColorMap()

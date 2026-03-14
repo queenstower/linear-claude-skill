@@ -30,60 +30,64 @@ function logError(...args: unknown[]) {
   console.error(...args);
 }
 
-async function checkLinearApiKey(): Promise<{ valid: boolean; issues: string[]; suggestions: string[] }> {
+async function checkLinearCredentials(): Promise<{ valid: boolean; issues: string[]; suggestions: string[]; authType?: string }> {
   const issues: string[] = [];
   const suggestions: string[] = [];
 
+  const agentToken = process.env.LINEAR_AGENT_TOKEN;
   const apiKey = process.env.LINEAR_API_KEY;
 
-  if (!apiKey) {
-    issues.push('LINEAR_API_KEY not set');
+  if (!agentToken && !apiKey) {
+    issues.push('No Linear credentials set');
     suggestions.push(
-      'Get your API key:',
+      'Option A (Preferred): Set up an agent identity:',
+      '  npx tsx scripts/oauth-setup.ts',
+      '  Then set LINEAR_AGENT_TOKEN in your environment',
+      '',
+      'Option B: Use a personal API key:',
       '  1. Open Linear (https://linear.app)',
-      '  2. Go to Settings (gear icon) -> Security & access -> Personal API keys',
+      '  2. Go to Settings -> Security & access -> Personal API keys',
       '  3. Click "Create key" and copy the key',
-      '',
-      'Then set it in your environment:',
-      '  Option A: Add to shell profile (~/.zshrc or ~/.bashrc):',
-      '    export LINEAR_API_KEY="lin_api_..."',
-      '',
-      '  Option B: Add to Claude Code environment (~/.claude/.env):',
-      '    LINEAR_API_KEY=lin_api_...',
-      '',
-      '  Option C: Add to project .env file:',
-      '    LINEAR_API_KEY=lin_api_...'
+      '  4. Set LINEAR_API_KEY in your environment'
     );
     return { valid: false, issues, suggestions };
   }
 
-  // Validate key format
-  if (!apiKey.startsWith('lin_api_')) {
+  const token = agentToken || apiKey!;
+  const authType = agentToken ? 'agent (OAuth)' : 'personal (API key)';
+
+  // Validate personal key format
+  if (!agentToken && apiKey && !apiKey.startsWith('lin_api_')) {
     issues.push('LINEAR_API_KEY has invalid format (should start with lin_api_)');
     suggestions.push('Regenerate your API key in Linear settings');
     return { valid: false, issues, suggestions };
   }
 
-  // Test the key works
+  // Test the token works
   try {
     const { LinearClient } = await import('@linear/sdk');
-    const client = new LinearClient({ apiKey });
+    const client = new LinearClient({ apiKey: token });
     const me = await client.viewer;
     const org = await me.organization;
 
-    log(`  Authenticated as: ${me.name} (${me.email})`);
+    log(`  Auth type: ${authType}`);
+    log(`  Authenticated as: ${me.name} (${(me as any).email || 'agent'})`);
     log(`  Organization: ${org?.name || 'Unknown'}`);
 
-    return { valid: true, issues: [], suggestions: [] };
+    if (!agentToken) {
+      log('\n  [TIP] Set up an agent identity for bot-attributed actions:');
+      log('    npx tsx scripts/oauth-setup.ts');
+    }
+
+    return { valid: true, issues: [], suggestions: [], authType };
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error);
     if (msg.includes('401') || msg.includes('unauthorized')) {
-      issues.push('LINEAR_API_KEY is invalid or expired');
+      issues.push(`${authType} token is invalid or expired`);
       suggestions.push(
-        'Your API key is not working. To fix:',
-        '  1. Go to Linear -> Settings -> Security & access -> Personal API keys',
-        '  2. Delete the old key and create a new one',
-        '  3. Update your environment variable'
+        agentToken
+          ? 'Re-run: npx tsx scripts/oauth-setup.ts'
+          : 'Regenerate your API key in Linear settings'
       );
     } else {
       issues.push(`API connection failed: ${msg}`);
@@ -160,25 +164,25 @@ async function runSetupCheck(): Promise<SetupResult> {
     allSuggestions.push(...sdkResult.suggestions, '');
   }
 
-  // 2. Check LINEAR_API_KEY (only if SDK is installed)
-  log('Checking LINEAR_API_KEY...');
+  // 2. Check Linear credentials (only if SDK is installed)
+  log('Checking Linear credentials...');
   if (sdkResult.installed) {
-    const apiResult = await checkLinearApiKey();
-    if (apiResult.valid) {
-      log('  [OK] API key is valid\n');
+    const credResult = await checkLinearCredentials();
+    if (credResult.valid) {
+      log(`  [OK] Credentials valid (${credResult.authType})\n`);
     } else {
-      log('  [MISSING/INVALID] API key issue\n');
-      allIssues.push(...apiResult.issues);
-      allSuggestions.push(...apiResult.suggestions, '');
+      log('  [MISSING/INVALID] Credentials issue\n');
+      allIssues.push(...credResult.issues);
+      allSuggestions.push(...credResult.suggestions, '');
     }
   } else {
-    if (process.env.LINEAR_API_KEY) {
-      log('  [SET] LINEAR_API_KEY is set (cannot validate without SDK)\n');
+    if (process.env.LINEAR_AGENT_TOKEN || process.env.LINEAR_API_KEY) {
+      log('  [SET] Credentials set (cannot validate without SDK)\n');
     } else {
-      log('  [MISSING] LINEAR_API_KEY not set\n');
-      allIssues.push('LINEAR_API_KEY not set');
+      log('  [MISSING] No Linear credentials set\n');
+      allIssues.push('No Linear credentials set');
       allSuggestions.push(
-        'After installing SDK, set your API key (see instructions above)',
+        'After installing SDK, run: npx tsx scripts/oauth-setup.ts',
         ''
       );
     }

@@ -24,7 +24,7 @@
  *   whoami                                   Show current user and organization
  */
 
-import { LinearClient, ProjectUpdateHealthType, InitiativeUpdateHealthType } from '@linear/sdk';
+import { ProjectUpdateHealthType, InitiativeUpdateHealthType } from '@linear/sdk';
 import {
   getAllLabels,
   getLabelsByCategory,
@@ -36,21 +36,22 @@ import {
   formatAgentSelection,
   formatAgentMatrix
 } from './lib';
+import { getLinearClient, getLinearToken } from './lib/linear-utils.js';
 
-// Validate API key early
-const API_KEY = process.env.LINEAR_API_KEY;
-if (!API_KEY) {
-  console.error('\n[ERROR] LINEAR_API_KEY environment variable is required\n');
-  console.error('To fix this:');
-  console.error('  1. Go to Linear -> Settings -> Security & access -> Personal API keys');
-  console.error('  2. Create a new API key');
-  console.error('  3. Run: export LINEAR_API_KEY="lin_api_..."');
-  console.error('\nOr run setup to check all requirements:');
+// Validate credentials early
+try {
+  const { type } = getLinearToken();
+  if (type === 'personal') {
+    console.error('[INFO] Using personal API key. Set LINEAR_AGENT_TOKEN for agent identity.\n');
+  }
+} catch (err) {
+  console.error(`\n[ERROR] ${err instanceof Error ? err.message : err}\n`);
+  console.error('Or run setup to check all requirements:');
   console.error('  npx tsx setup.ts\n');
   process.exit(1);
 }
 
-const client = new LinearClient({ apiKey: API_KEY });
+const client = getLinearClient();
 
 // Command implementations
 const commands: Record<string, (...args: string[]) => Promise<void>> = {

@@ -52,7 +52,7 @@ linear issues list
 ### Safe Commands (Always Use)
 
 ```bash
-# Validate LINEAR_API_KEY is set (masked output)
+# Validate credentials are set (masked output)
 varlock load 2>&1 | grep LINEAR
 
 # Run commands with secrets injected
@@ -65,8 +65,9 @@ cat .env.schema | grep LINEAR
 ### Unsafe Commands (NEVER Use)
 
 ```bash
-# ❌ NEVER - exposes key to Claude's context
+# ❌ NEVER - exposes tokens to Claude's context
 linear config show
+echo $LINEAR_AGENT_TOKEN
 echo $LINEAR_API_KEY
 printenv | grep LINEAR
 cat .env
@@ -76,18 +77,20 @@ cat .env
 
 1. Create `.env.schema` with `@sensitive` annotation:
    ```bash
-   # @type=string(startsWith=lin_api_) @required @sensitive
+   # @type=string @required=false @sensitive
+   LINEAR_AGENT_TOKEN=
+   # @type=string(startsWith=lin_api_) @required=false @sensitive
    LINEAR_API_KEY=
    ```
 
-2. Add `LINEAR_API_KEY` to `.env` (never commit this file)
+2. Add credentials to `.env` (never commit this file)
 
 3. Configure MCP to use environment variable:
    ```json
    {
      "mcpServers": {
        "linear": {
-         "env": { "LINEAR_API_KEY": "${LINEAR_API_KEY}" }
+         "env": { "LINEAR_API_KEY": "${LINEAR_AGENT_TOKEN:-${LINEAR_API_KEY}}" }
        }
      }
    }
@@ -108,14 +111,30 @@ npx tsx scripts/setup.ts
 ```
 
 This will check:
-- LINEAR_API_KEY is set and valid
+- Linear credentials (agent token or personal API key)
 - @linear/sdk is installed
 - Linear CLI availability (optional)
 - MCP configuration (optional)
 
-### 2. Get API Key (If Needed)
+### 2. Authentication Setup
 
-If setup reports a missing API key:
+The skill supports two authentication methods. **Agent identity is preferred** — it creates a dedicated bot user so automated actions are attributed to the agent, not a personal account.
+
+#### Option A: Agent Identity (Preferred)
+
+Creates a dedicated agent user in your Linear workspace via OAuth:
+
+```bash
+LINEAR_OAUTH_CLIENT_ID=xxx LINEAR_OAUTH_CLIENT_SECRET=xxx npx tsx scripts/oauth-setup.ts
+```
+
+This opens a browser for workspace admin approval, then outputs a `LINEAR_AGENT_TOKEN`. Add it to your environment:
+
+```bash
+echo 'LINEAR_AGENT_TOKEN=your_token_here' >> ~/.claude/.env
+```
+
+#### Option B: Personal API Key (Fallback)
 
 1. Open [Linear](https://linear.app) in your browser
 2. Go to **Settings** (gear icon) -> **Security & access** -> **Personal API keys**
@@ -123,14 +142,10 @@ If setup reports a missing API key:
 4. Add to your environment:
 
 ```bash
-# Option A: Add to shell profile (~/.zshrc or ~/.bashrc)
 export LINEAR_API_KEY="lin_api_your_key_here"
-
-# Option B: Add to Claude Code environment
-echo 'LINEAR_API_KEY=lin_api_your_key_here' >> ~/.claude/.env
-
-# Then reload your shell or restart Claude Code
 ```
+
+> **Priority**: If both `LINEAR_AGENT_TOKEN` and `LINEAR_API_KEY` are set, the agent token is used.
 
 ### 3. Test Connection
 
@@ -140,7 +155,7 @@ Verify everything works:
 npx tsx scripts/query.ts "query { viewer { name } }"
 ```
 
-You should see your name from Linear.
+With agent auth, you should see the agent's name. With personal auth, you see your own name.
 
 ### 4. Common Operations
 

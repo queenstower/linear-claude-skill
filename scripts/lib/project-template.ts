@@ -9,13 +9,13 @@
  * 5. Issues created with labels
  * 6. Post-execution verification
  */
-import { LinearClient } from '@linear/sdk'
 import { fileURLToPath } from 'url'
 import { linkProjectToInitiative, DEFAULT_INITIATIVE_ID } from './initiative'
 import { ensureLabelsExist, extractUniqueLabels } from './labels'
 import { verifyProjectCreation } from './verify'
+import { getLinearClient, getLinearToken } from './linear-utils.js'
 
-const client = new LinearClient({ apiKey: process.env.LINEAR_API_KEY })
+const client = getLinearClient()
 
 export interface IssueConfig {
   title: string
@@ -152,7 +152,7 @@ export async function createProject(
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': process.env.LINEAR_API_KEY || ''
+        'Authorization': getLinearToken().token
       },
       body: JSON.stringify({
         query: mutation,

@@ -10,10 +10,11 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-if [ -z "${LINEAR_API_KEY:-}" ]; then
-  echo "Error: LINEAR_API_KEY environment variable is required" >&2
+if [ -z "${LINEAR_AGENT_TOKEN:-}" ] && [ -z "${LINEAR_API_KEY:-}" ]; then
+  echo "Error: LINEAR_AGENT_TOKEN or LINEAR_API_KEY environment variable is required" >&2
   echo "" >&2
   echo "Usage:" >&2
+  echo "  npx tsx scripts/oauth-setup.ts  # Set up agent identity (preferred)" >&2
   echo "  LINEAR_API_KEY=lin_api_xxx ./query.sh \"query { viewer { id name } }\"" >&2
   exit 1
 fi

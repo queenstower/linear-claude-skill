@@ -9,6 +9,7 @@
  */
 
 import { LinearClient } from '@linear/sdk';
+import { getLinearToken } from './lib/linear-utils.js';
 
 interface GraphQLErrorResponse {
   errors: Array<{
@@ -27,34 +28,18 @@ function hasGraphQLErrors(error: unknown): error is Error & GraphQLErrorResponse
 }
 
 async function main() {
-  const apiKey = process.env.LINEAR_API_KEY;
-
-  if (!apiKey) {
-    console.error('\n========================================');
-    console.error('  LINEAR_API_KEY Not Found');
-    console.error('========================================\n');
-    console.error('To fix this:\n');
-    console.error('  1. Go to Linear -> Settings -> Security & access -> Personal API keys');
-    console.error('  2. Click "Create key" and copy the key (starts with lin_api_)');
-    console.error('  3. Set it in your environment:\n');
-    console.error('     # Option A: Export in current shell');
-    console.error('     export LINEAR_API_KEY="lin_api_your_key_here"\n');
-    console.error('     # Option B: Add to shell profile (~/.zshrc or ~/.bashrc)');
-    console.error('     echo \'export LINEAR_API_KEY="lin_api_..."\' >> ~/.zshrc\n');
-    console.error('     # Option C: Add to Claude Code environment');
-    console.error('     echo \'LINEAR_API_KEY=lin_api_...\' >> ~/.claude/.env\n');
+  let token: string;
+  try {
+    const result = getLinearToken();
+    token = result.token;
+    if (result.type === 'personal') {
+      console.error('[INFO] Using personal API key. Set LINEAR_AGENT_TOKEN for agent identity.\n');
+    }
+  } catch (err) {
+    console.error(`\n[ERROR] ${err instanceof Error ? err.message : err}\n`);
     console.error('Or run the full setup check:');
     console.error('  npx tsx setup.ts\n');
-    console.error('Usage once configured:');
-    console.error('  npx tsx query.ts "query { viewer { id name } }"\n');
     process.exit(1);
-  }
-
-  // Validate key format
-  if (!apiKey.startsWith('lin_api_')) {
-    console.error('\n[WARNING] LINEAR_API_KEY has unexpected format');
-    console.error('Expected format: lin_api_... (got: ' + apiKey.substring(0, 10) + '...)');
-    console.error('This may cause authentication failures.\n');
   }
 
   const query = process.argv[2];
@@ -64,8 +49,7 @@ async function main() {
     console.error('Error: Query argument is required');
     console.error('');
     console.error('Usage:');
-    console.error('  LINEAR_API_KEY=lin_api_xxx npx tsx query.ts "query { viewer { id name } }"');
-    console.error('  LINEAR_API_KEY=lin_api_xxx npx tsx query.ts "query($id: String!) { issue(id: $id) { title } }" \'{"id": "ISSUE_ID"}\'');
+    console.error('  npx tsx query.ts "query { viewer { id name } }"');
     process.exit(1);
   }
 
@@ -80,7 +64,7 @@ async function main() {
     }
   }
 
-  const client = new LinearClient({ apiKey });
+  const client = new LinearClient({ apiKey: token });
 
   try {
     const result = await client.client.rawRequest(query, variables);

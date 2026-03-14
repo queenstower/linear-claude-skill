@@ -16,6 +16,7 @@
  */
 
 import { LinearClient } from '@linear/sdk';
+import { getLinearToken } from './lib/linear-utils.js';
 
 interface SyncOptions {
   issues: string[];
@@ -69,10 +70,12 @@ function printUsage(): void {
 }
 
 async function main() {
-  const apiKey = process.env.LINEAR_API_KEY;
-
-  if (!apiKey) {
-    console.error('Error: LINEAR_API_KEY environment variable is required');
+  let token: string;
+  try {
+    const result = getLinearToken();
+    token = result.token;
+  } catch (err) {
+    console.error(`Error: ${err instanceof Error ? err.message : err}`);
     console.error('');
     printUsage();
     process.exit(1);
@@ -94,7 +97,7 @@ async function main() {
     process.exit(1);
   }
 
-  const client = new LinearClient({ apiKey });
+  const client = new LinearClient({ apiKey: token });
 
   console.log(`\n📋 Syncing ${options.issues.length} issue(s) to "${options.state}"...`);
   if (options.dryRun) {

@@ -4,10 +4,10 @@
  * MANDATORY: Every project MUST be linked to an initiative.
  * This module ensures projects are properly connected.
  */
-import { LinearClient } from '@linear/sdk'
 import { fileURLToPath } from 'url'
+import { getLinearClient, getLinearToken } from './linear-utils.js'
 
-const client = new LinearClient({ apiKey: process.env.LINEAR_API_KEY })
+const client = getLinearClient()
 
 // Default initiative ID - set via environment or override in function calls
 // Users should set LINEAR_DEFAULT_INITIATIVE_ID in their environment
@@ -48,7 +48,7 @@ export async function linkProjectToInitiative(
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': process.env.LINEAR_API_KEY || ''
+        'Authorization': getLinearToken().token
       },
       body: JSON.stringify({
         query: mutation,
@@ -101,7 +101,7 @@ export async function isProjectLinkedToInitiative(
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': process.env.LINEAR_API_KEY || ''
+        'Authorization': getLinearToken().token
       },
       body: JSON.stringify({
         query,

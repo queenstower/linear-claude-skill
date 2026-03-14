@@ -74,21 +74,43 @@ export function createLinearClient(apiKey: string): LinearClient {
 }
 
 /**
- * Get a LinearClient instance with API key validation
+ * Get the best available Linear API token.
  *
- * Reads the API key from LINEAR_API_KEY environment variable.
+ * Prefers LINEAR_AGENT_TOKEN (OAuth agent identity) over LINEAR_API_KEY (personal).
+ * The agent token is obtained via the actor=app OAuth flow and creates actions
+ * under the dedicated agent user instead of a personal account.
  *
- * @throws Error if LINEAR_API_KEY environment variable is not set
+ * @throws Error if neither token is set
+ * @returns The API token string and which type it is
+ */
+export function getLinearToken(): { token: string; type: 'agent' | 'personal' } {
+  const agentToken = process.env.LINEAR_AGENT_TOKEN;
+  if (agentToken) {
+    return { token: agentToken, type: 'agent' };
+  }
+
+  const apiKey = process.env.LINEAR_API_KEY;
+  if (apiKey) {
+    return { token: apiKey, type: 'personal' };
+  }
+
+  throw new Error(
+    'No Linear credentials found. Set LINEAR_AGENT_TOKEN (preferred) or LINEAR_API_KEY.\n' +
+    'Run: npx tsx scripts/oauth-setup.ts  — to set up the agent identity'
+  );
+}
+
+/**
+ * Get a LinearClient instance with token validation.
+ *
+ * Prefers LINEAR_AGENT_TOKEN (OAuth agent) over LINEAR_API_KEY (personal).
+ *
+ * @throws Error if no Linear credentials are set
  * @returns LinearClient instance
  */
 export function getLinearClient(): LinearClient {
-  const apiKey = process.env.LINEAR_API_KEY;
-
-  if (!apiKey) {
-    throw new Error('LINEAR_API_KEY environment variable is required');
-  }
-
-  return createLinearClient(apiKey);
+  const { token } = getLinearToken();
+  return createLinearClient(token);
 }
 
 // ============================================================================

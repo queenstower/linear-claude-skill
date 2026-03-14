@@ -7,12 +7,12 @@
  * - All expected issues created
  * - All labels applied
  */
-import { LinearClient } from '@linear/sdk'
 import { fileURLToPath } from 'url'
 import { isProjectLinkedToInitiative, DEFAULT_INITIATIVE_ID } from './initiative'
 import { verifyLabelsApplied } from './labels'
+import { getLinearClient } from './linear-utils.js'
 
-const client = new LinearClient({ apiKey: process.env.LINEAR_API_KEY })
+const client = getLinearClient()
 
 export interface ProjectVerification {
   project: {

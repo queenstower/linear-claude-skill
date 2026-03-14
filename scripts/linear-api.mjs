@@ -24,18 +24,22 @@ let teamCache = null;
 /**
  * Execute a GraphQL query against Linear API
  */
-async function graphql(query, variables = {}) {
+function getToken() {
+  const agentToken = process.env.LINEAR_AGENT_TOKEN;
+  if (agentToken) return agentToken;
   const apiKey = process.env.LINEAR_API_KEY;
+  if (apiKey) return apiKey;
+  throw new Error('No Linear credentials found. Set LINEAR_AGENT_TOKEN (preferred) or LINEAR_API_KEY.');
+}
 
-  if (!apiKey) {
-    throw new Error('LINEAR_API_KEY environment variable is not set');
-  }
+async function graphql(query, variables = {}) {
+  const token = getToken();
 
   const response = await fetch(API_URL, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      Authorization: apiKey,
+      Authorization: token,
     },
     body: JSON.stringify({ query, variables }),
   });
