@@ -2,28 +2,36 @@
 /**
  * Linear OAuth Agent Setup
  *
- * One-time script to obtain an OAuth access token for a Linear agent application
- * using the actor=app flow. This creates a dedicated agent user in the workspace.
+ * Obtains an OAuth access token for a Linear agent application using the
+ * actor=app flow. Creates a dedicated agent user in the workspace.
+ *
+ * Supports two modes (raced automatically):
+ *   1. Local callback — browser redirects to localhost (works when browser is local)
+ *   2. Manual paste   — copy the code from the redirect URL and paste it here
+ *                        (works on headless/remote servers)
  *
  * Required environment variables:
  *   LINEAR_OAUTH_CLIENT_ID     - OAuth application client ID
  *   LINEAR_OAUTH_CLIENT_SECRET - OAuth application client secret
  *
  * Usage:
- *   LINEAR_OAUTH_CLIENT_ID=xxx LINEAR_OAUTH_CLIENT_SECRET=xxx npx tsx scripts/oauth-setup.ts
- *
- * After successful auth, the script outputs the access token to store as LINEAR_AGENT_TOKEN.
+ *   export $(grep -v '^#' .env | xargs)
+ *   npx tsx scripts/oauth-setup.ts
  */
 
 import http from 'http';
 import { URL } from 'url';
+import { createInterface } from 'readline';
 import { execSync } from 'child_process';
+import { persistTokens } from './lib/token-refresh.js';
 
 const REDIRECT_PORT = 3456;
 const REDIRECT_URI = `http://localhost:${REDIRECT_PORT}/callback`;
 const LINEAR_AUTH_URL = 'https://linear.app/oauth/authorize';
 const LINEAR_TOKEN_URL = 'https://api.linear.app/oauth/token';
 const LINEAR_API_URL = 'https://api.linear.app/graphql';
+
+const LINEAR_REVOKE_URL = 'https://api.linear.app/oauth/revoke';
 
 const SCOPES = [
   'read',
@@ -36,6 +44,7 @@ const SCOPES = [
 
 interface TokenResponse {
   access_token: string;
+  refresh_token?: string;
   token_type: string;
   expires_in?: number;
   scope: string;
@@ -119,40 +128,71 @@ async function verifyToken(accessToken: string): Promise<ViewerResponse> {
   return response.json() as Promise<ViewerResponse>;
 }
 
-function openBrowser(url: string): void {
-  try {
-    // Try xdg-open (Linux), then open (macOS), then start (Windows)
-    const commands = ['xdg-open', 'open', 'start'];
-    for (const cmd of commands) {
-      try {
-        execSync(`which ${cmd} 2>/dev/null`, { encoding: 'utf8' });
-        execSync(`${cmd} "${url}"`, { stdio: 'ignore' });
-        return;
-      } catch {
-        continue;
-      }
+function openBrowser(url: string): boolean {
+  const commands = ['xdg-open', 'open', 'start'];
+  for (const cmd of commands) {
+    try {
+      execSync(`which ${cmd} 2>/dev/null`, { encoding: 'utf8' });
+      execSync(`${cmd} "${url}"`, { stdio: 'ignore' });
+      return true;
+    } catch {
+      continue;
     }
-    console.log('\n[INFO] Could not auto-open browser.');
+  }
+  return false;
+}
+
+/**
+ * Revoke an existing OAuth token via the Linear API.
+ * This allows a fresh authorization flow to issue a new token (with refresh token).
+ */
+async function revokeToken(token: string): Promise<boolean> {
+  try {
+    const response = await fetch(LINEAR_REVOKE_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({ token }).toString(),
+    });
+    return response.ok;
   } catch {
-    console.log('\n[INFO] Could not auto-open browser.');
+    return false;
   }
 }
 
-async function main(): Promise<void> {
-  const clientId = getRequiredEnv('LINEAR_OAUTH_CLIENT_ID');
-  const clientSecret = getRequiredEnv('LINEAR_OAUTH_CLIENT_SECRET');
+/**
+ * Extract the authorization code from user input.
+ * Accepts either a bare code string or a full callback URL containing ?code=...
+ */
+function extractCodeFromInput(input: string): string | null {
+  const trimmed = input.trim();
+  if (!trimmed) return null;
 
-  console.log('\n========================================');
-  console.log('  Linear Agent OAuth Setup');
-  console.log('========================================\n');
-  console.log('This will create a dedicated agent user in your Linear workspace.');
-  console.log('You need workspace admin permissions to approve the installation.\n');
+  // Check if it's a URL with ?code= parameter
+  try {
+    const url = new URL(trimmed);
+    const code = url.searchParams.get('code');
+    if (code) return code;
+  } catch {
+    // Not a URL — treat as bare code
+  }
 
-  const authUrl = buildAuthUrl(clientId);
+  // Accept bare code (alphanumeric + hyphens, typical OAuth code format)
+  if (/^[\w-]+$/.test(trimmed)) {
+    return trimmed;
+  }
 
-  // Start local callback server
-  const codePromise = new Promise<string>((resolve, reject) => {
-    const server = http.createServer((req, res) => {
+  return null;
+}
+
+/**
+ * Wait for the auth code via local HTTP callback server.
+ * Returns a promise + a cleanup function to stop the server.
+ */
+function waitForCallback(): { promise: Promise<string>; cleanup: () => void } {
+  let server: http.Server | null = null;
+
+  const promise = new Promise<string>((resolve, reject) => {
+    server = http.createServer((req, res) => {
       if (!req.url?.startsWith('/callback')) {
         res.writeHead(404);
         res.end('Not found');
@@ -165,61 +205,137 @@ async function main(): Promise<void> {
 
       if (error) {
         res.writeHead(200, { 'Content-Type': 'text/html' });
-        res.end(`<html><body><h2>Authorization failed</h2><p>${error}</p><p>You can close this tab.</p></body></html>`);
-        server.close();
+        res.end(`<html><body><h2>Authorization failed</h2><p>${error}</p></body></html>`);
+        server?.close();
         reject(new Error(`OAuth error: ${error}`));
         return;
       }
 
       if (!code) {
         res.writeHead(400, { 'Content-Type': 'text/html' });
-        res.end('<html><body><h2>Missing authorization code</h2><p>You can close this tab.</p></body></html>');
-        server.close();
+        res.end('<html><body><h2>Missing authorization code</h2></body></html>');
+        server?.close();
         reject(new Error('No authorization code received'));
         return;
       }
 
       res.writeHead(200, { 'Content-Type': 'text/html' });
-      res.end('<html><body><h2>Authorization successful!</h2><p>You can close this tab and return to the terminal.</p></body></html>');
-      server.close();
+      res.end('<html><body><h2>Authorization successful!</h2><p>You can close this tab.</p></body></html>');
+      server?.close();
       resolve(code);
     });
 
     server.listen(REDIRECT_PORT, () => {
-      console.log(`Callback server listening on port ${REDIRECT_PORT}\n`);
+      // Server started silently
     });
 
-    server.on('error', (err: NodeJS.ErrnoException) => {
-      if (err.code === 'EADDRINUSE') {
-        reject(new Error(`Port ${REDIRECT_PORT} is already in use. Close the other process and try again.`));
-      } else {
-        reject(err);
-      }
+    server.on('error', () => {
+      // Port unavailable — callback mode won't work, but manual paste still will
     });
 
-    // Timeout after 5 minutes
     setTimeout(() => {
-      server.close();
-      reject(new Error('Timed out waiting for OAuth callback (5 minutes)'));
+      server?.close();
+      reject(new Error('Timed out waiting for callback'));
     }, 5 * 60 * 1000);
   });
 
-  console.log('Opening browser for authorization...\n');
-  console.log('If the browser does not open, visit this URL manually:\n');
+  return {
+    promise,
+    cleanup: () => { server?.close(); },
+  };
+}
+
+/**
+ * Wait for the auth code via manual paste on stdin.
+ * Returns a promise + a cleanup function to close readline.
+ */
+function waitForManualPaste(): { promise: Promise<string>; cleanup: () => void } {
+  const rl = createInterface({ input: process.stdin, output: process.stdout });
+
+  const promise = new Promise<string>((resolve, reject) => {
+    rl.question('\n  Paste the code (or full redirect URL) here: ', (answer) => {
+      const code = extractCodeFromInput(answer);
+      if (code) {
+        resolve(code);
+      } else {
+        reject(new Error('Could not extract authorization code from input'));
+      }
+      rl.close();
+    });
+
+    setTimeout(() => {
+      rl.close();
+      reject(new Error('Timed out waiting for manual input'));
+    }, 5 * 60 * 1000);
+  });
+
+  return {
+    promise,
+    cleanup: () => { rl.close(); },
+  };
+}
+
+async function main(): Promise<void> {
+  const clientId = getRequiredEnv('LINEAR_OAUTH_CLIENT_ID');
+  const clientSecret = getRequiredEnv('LINEAR_OAUTH_CLIENT_SECRET');
+
+  console.log('\n========================================');
+  console.log('  Linear Agent OAuth Setup');
+  console.log('========================================\n');
+  console.log('This will create a dedicated agent user in your Linear workspace.');
+  console.log('You need workspace admin permissions to approve the installation.\n');
+
+  // Revoke existing token so Linear shows the consent screen again
+  const existingToken = process.env.LINEAR_AGENT_TOKEN;
+  if (existingToken) {
+    console.log('Revoking existing token to allow fresh authorization...');
+    const revoked = await revokeToken(existingToken);
+    if (revoked) {
+      console.log('  Existing token revoked successfully.\n');
+    } else {
+      console.log('  Could not revoke existing token (may already be expired).');
+      console.log('  Proceeding with authorization anyway.\n');
+      console.log('  If Linear says "already authorized" without redirecting,');
+      console.log('  go to Linear Settings > Authorized Applications > revoke the app manually.\n');
+    }
+  }
+
+  const authUrl = buildAuthUrl(clientId);
+
+  // Try to open browser
+  const browserOpened = openBrowser(authUrl);
+
+  console.log('Open this URL in your browser to authorize:\n');
   console.log(`  ${authUrl}\n`);
 
-  openBrowser(authUrl);
+  if (browserOpened) {
+    console.log('  (browser opened automatically)\n');
+  }
 
-  console.log('Waiting for authorization...\n');
+  console.log('After authorizing, either:');
+  console.log('  A) The browser will redirect back automatically (if local)');
+  console.log('  B) Copy the code from the redirect URL and paste it below\n');
+  console.log('     The redirect URL looks like:');
+  console.log('     http://localhost:3456/callback?code=<THE_CODE_TO_COPY>\n');
+
+  // Race: local callback vs manual paste — first one wins
+  const callback = waitForCallback();
+  const manual = waitForManualPaste();
+
+  let code: string;
+  try {
+    code = await Promise.race([callback.promise, manual.promise]);
+  } finally {
+    callback.cleanup();
+    manual.cleanup();
+  }
+
+  console.log('\nAuthorization code received. Exchanging for access token...\n');
 
   try {
-    const code = await codePromise;
-    console.log('Authorization code received. Exchanging for access token...\n');
-
     const tokenData = await exchangeCodeForToken(code, clientId, clientSecret);
     console.log('Token obtained successfully!\n');
 
-    // Verify the token works
     console.log('Verifying agent identity...\n');
     const viewer = await verifyToken(tokenData.access_token);
     const agent = viewer.data.viewer;
@@ -232,16 +348,21 @@ async function main(): Promise<void> {
     console.log(`  Active:     ${agent.active}`);
     console.log(`  Scopes:     ${tokenData.scope}\n`);
 
+    // Auto-persist tokens to .env file
+    persistTokens(tokenData.access_token, tokenData.refresh_token);
+
     console.log('========================================');
-    console.log('  Save the following token securely:');
+    console.log('  Tokens saved to .env');
     console.log('========================================\n');
     console.log(`  LINEAR_AGENT_TOKEN=${tokenData.access_token}\n`);
 
-    console.log('Add it to your environment:\n');
-    console.log('  Option A: Claude Code environment (~/.claude/.env):');
-    console.log(`    echo 'LINEAR_AGENT_TOKEN=${tokenData.access_token}' >> ~/.claude/.env\n`);
-    console.log('  Option B: Shell profile (~/.zshrc or ~/.bashrc):');
-    console.log(`    export LINEAR_AGENT_TOKEN="${tokenData.access_token}"\n`);
+    if (tokenData.refresh_token) {
+      console.log(`  LINEAR_REFRESH_TOKEN=${tokenData.refresh_token}`);
+      console.log('  (auto-refresh enabled — token will renew automatically when expired)\n');
+    } else {
+      console.log('  [WARN] No refresh token received. Token auto-refresh will not be available.');
+      console.log('  You may need to re-run this setup when the access token expires.\n');
+    }
 
     console.log('The Linear skill will now use this agent identity instead of your personal API key.');
     console.log('Your personal LINEAR_API_KEY is still used as a fallback.\n');

@@ -9,7 +9,7 @@
  */
 
 import { LinearClient } from '@linear/sdk';
-import { getLinearToken } from './lib/linear-utils.js';
+import { getValidLinearToken } from './lib/linear-utils.js';
 
 interface GraphQLErrorResponse {
   errors: Array<{
@@ -30,7 +30,7 @@ function hasGraphQLErrors(error: unknown): error is Error & GraphQLErrorResponse
 async function main() {
   let token: string;
   try {
-    const result = getLinearToken();
+    const result = await getValidLinearToken();
     token = result.token;
     if (result.type === 'personal') {
       console.error('[INFO] Using personal API key. Set LINEAR_AGENT_TOKEN for agent identity.\n');

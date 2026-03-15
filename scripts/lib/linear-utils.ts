@@ -6,6 +6,7 @@
  */
 
 import { LinearClient } from '@linear/sdk';
+import { ensureValidToken } from './token-refresh.js';
 
 // ============================================================================
 // Types
@@ -110,6 +111,41 @@ export function getLinearToken(): { token: string; type: 'agent' | 'personal' } 
  */
 export function getLinearClient(): LinearClient {
   const { token } = getLinearToken();
+  return createLinearClient(token);
+}
+
+/**
+ * Get a valid Linear API token, refreshing if the OAuth token has expired.
+ *
+ * For agent tokens (OAuth), this tests the token against the API and
+ * automatically refreshes it using LINEAR_OAUTH_CLIENT_ID/SECRET if expired.
+ * Personal API keys are returned as-is (they don't expire).
+ *
+ * @throws Error if no credentials are set or refresh fails
+ * @returns The validated API token string and its type
+ */
+export async function getValidLinearToken(): Promise<{ token: string; type: 'agent' | 'personal' }> {
+  const result = getLinearToken();
+
+  if (result.type === 'personal') {
+    return result;
+  }
+
+  // Agent token — validate and refresh if expired
+  const validToken = await ensureValidToken(result.token);
+  return { token: validToken, type: 'agent' };
+}
+
+/**
+ * Get a LinearClient with a validated (and possibly refreshed) token.
+ *
+ * Async variant of getLinearClient that auto-refreshes expired OAuth tokens.
+ *
+ * @throws Error if no credentials are set or refresh fails
+ * @returns LinearClient instance with a valid token
+ */
+export async function getValidLinearClient(): Promise<LinearClient> {
+  const { token } = await getValidLinearToken();
   return createLinearClient(token);
 }
 
