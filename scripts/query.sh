@@ -17,8 +17,16 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 RUST_PROJECT_DIR="$SCRIPT_DIR/query-bench/rust"
 RUST_BINARY="$RUST_PROJECT_DIR/target/release/query"
+
+# --- Load .env (takes precedence over stale shell env vars) ---
+if [ -f "$PROJECT_DIR/.env" ]; then
+  set -a
+  source "$PROJECT_DIR/.env"
+  set +a
+fi
 
 # --- Credential check (shared by all backends) ---
 if [ -z "${LINEAR_AGENT_TOKEN:-}" ] && [ -z "${LINEAR_API_KEY:-}" ]; then
