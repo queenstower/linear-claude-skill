@@ -1,3 +1,4 @@
+use dotenvy;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -222,6 +223,19 @@ async fn refresh_oauth_token(client: &Client) -> Result<OAuthTokenResponse, Stri
     Ok(token_resp)
 }
 
+/// Load variables from the .env file, overriding any existing shell env vars.
+/// This ensures we always use the freshest tokens (e.g. after a refresh).
+fn load_env_file() {
+    if let Some(env_path) = find_env_file() {
+        match dotenvy::from_path_override(&env_path) {
+            Ok(_) => {}
+            Err(e) => {
+                eprintln!("[WARN] Failed to load {}: {}", env_path.display(), e);
+            }
+        }
+    }
+}
+
 /// Find the .env file by walking up from the binary or from SCRIPT_DIR.
 fn find_env_file() -> Option<PathBuf> {
     // Try relative to the binary's grandparent (rust/target/release/ -> rust/ -> query-bench/ -> scripts/ -> .env)
@@ -302,6 +316,9 @@ fn update_env_file(new_access_token: &str, new_refresh_token: Option<&str>) {
 
 #[tokio::main]
 async fn main() {
+    // Load .env file first, overriding stale shell env vars with fresh tokens
+    load_env_file();
+
     let (query, variables) = match parse_args() {
         Ok(v) => v,
         Err(e) => {
