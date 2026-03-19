@@ -462,6 +462,42 @@ The script will:
 | `upload-image.ts` "Issue not found" | Issue was deleted before attaching | Ensure issue exists first |
 | Image not found on disk | Shared inline, not as file | Extract from session JSONL (Step 1) |
 
+## Image Downloads
+
+Download images attached to a Linear issue (from description, comments, or attachments) to a local directory for inspection.
+
+```bash
+# Download all images from an issue to /tmp/linear-images/<identifier>/
+bash scripts/download-images.sh ENG-123
+
+# Download to a custom directory
+bash scripts/download-images.sh ENG-123 /tmp/my-images
+```
+
+The script uses the Rust binary with authenticated requests and auto token refresh. It:
+1. Queries the issue's description, comments, and attachments via GraphQL
+2. Extracts image URLs (markdown `![](url)` and bare `uploads.linear.app` URLs)
+3. Downloads each image with authentication headers
+4. Outputs JSON with local file paths for further use
+
+**Output format** (JSON to stdout):
+```json
+{
+  "issue_identifier": "ENG-123",
+  "output_dir": "/tmp/linear-images/ENG-123",
+  "images": [
+    {
+      "url": "https://uploads.linear.app/...",
+      "local_path": "/tmp/linear-images/ENG-123/image-0.png",
+      "source": "description",
+      "filename": "image-0.png"
+    }
+  ]
+}
+```
+
+After downloading, use the Read tool to view images directly.
+
 ---
 
 ## Critical Requirements
